@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Stock | ANKA Skincare</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f7f8fc;
+  margin: 0;
+}
+
+.navbar {
+  background: #111827;
+  color: white;
+  padding: 18px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.nav-actions button {
+  margin-left: 10px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.home-btn {
+  background: white;
+  color: #111827;
+}
+
+.logout-btn {
+  background: #dc2626;
+  color: white;
+}
+
+.container {
+  max-width: 700px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+.form-card {
+  background: white;
+  padding: 30px;
+  border-radius: 14px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+label {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+input, select {
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0 15px 0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+button.add-btn {
+  width: 100%;
+  padding: 14px;
+  background: #111827;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#message {
+  margin-top: 15px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.success { color: green; }
+.error { color: red; }
+
+.barcode-box {
+  background: #f3f4f6;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+  <div class="logo">ANKA Skincare</div>
+
+  <div class="nav-actions">
+    <button class="home-btn" onclick="goHome()">Home</button>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<!-- FORM -->
+<div class="container">
+
+  <div class="form-card">
+
+    <h2>Add Stock</h2>
+
+    <!-- BARCODE (READY FOR SCANNER) -->
+    <label>Barcode / Product Code</label>
+    <input type="text" id="barcode" placeholder="Scan or enter barcode">
+
+    <label>Product Name</label>
+    <input type="text" id="product">
+
+    <label>Category</label>
+    <select id="category">
+      <option value="">Loading categories...</option>
+    </select>
+
+    <label>Units</label>
+    <input type="number" id="units">
+
+    <label>Buying Price</label>
+    <input type="number" id="buying_price">
+
+    <label>Selling Price</label>
+    <input type="number" id="selling_price">
+
+    <button class="add-btn" onclick="addStock()">Add Stock</button>
+
+    <div id="message"></div>
+
+  </div>
+
+</div>
+
+<script>
+
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzObXviRyBq_uktnGna465i0DHdPww8NBVBtCMFoun0cQUKMmcn-R3ttIfqshR0_rno/exec";
+
+/* =========================
+SESSION CHECK
+========================= */
+const user = localStorage.getItem("user");
+const role = localStorage.getItem("role");
+
+if (!user) {
+  window.location.href = "index.html";
+}
+
+if (role !== "admin") {
+  alert("Admin only");
+  window.location.href = "SINV.html";
+}
+
+/* =========================
+INIT
+========================= */
+window.addEventListener("load", function () {
+  loadCategories();
+});
+
+/* =========================
+LOAD CATEGORIES
+========================= */
+function loadCategories() {
+
+  fetch(SCRIPT_URL + "?action=getCategories")
+    .then(res => res.json())
+    .then(data => {
+
+      const dropdown = document.getElementById("category");
+      dropdown.innerHTML = '<option value="">Select Category</option>';
+
+      if (data.status === "success") {
+        data.categories.forEach(cat => {
+          let opt = document.createElement("option");
+          opt.value = cat;
+          opt.textContent = cat;
+          dropdown.appendChild(opt);
+        });
+      }
+
+    })
+    .catch(err => console.log(err));
+}
+
+/* =========================
+ADD STOCK
+========================= */
+function addStock() {
+
+  const barcode = document.getElementById("barcode").value.trim();
+  const product = document.getElementById("product").value.trim();
+  const category = document.getElementById("category").value.trim();
+  const units = document.getElementById("units").value.trim();
+  const buying = document.getElementById("buying_price").value.trim();
+  const selling = document.getElementById("selling_price").value.trim();
+
+  const msg = document.getElementById("message");
+
+  msg.innerHTML = "";
+  msg.className = "";
+
+  if (!product || !category || !units || !buying || !selling) {
+    msg.className = "error";
+    msg.innerText = "Fill all fields";
+    return;
+  }
+
+  const url =
+    SCRIPT_URL +
+    "?action=addStock" +
+    "&barcode=" + encodeURIComponent(barcode) +
+    "&product=" + encodeURIComponent(product) +
+    "&category=" + encodeURIComponent(category) +
+    "&units=" + encodeURIComponent(units) +
+    "&buying_price=" + encodeURIComponent(buying) +
+    "&selling_price=" + encodeURIComponent(selling) +
+    "&role=" + encodeURIComponent(role);
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+
+      if (data.status === "success") {
+
+        msg.className = "success";
+        msg.innerText = "Stock added successfully. Redirecting...";
+
+        setTimeout(() => {
+          window.location.href = "SINV.html";
+        }, 1200);
+
+      } else {
+        msg.className = "error";
+        msg.innerText = data.message || "Failed";
+      }
+
+    })
+    .catch(err => {
+      console.log(err);
+      msg.className = "error";
+      msg.innerText = "Server not reachable";
+    });
+}
+
+/* =========================
+NAV
+========================= */
+function goHome() {
+  window.location.href = "SINV.html";
+}
+
+function logout() {
+  localStorage.removeItem("user");
+  localStorage.removeItem("role");
+  window.location.href = "index.html";
+}
+
+</script>
+
+</body>
+</html>

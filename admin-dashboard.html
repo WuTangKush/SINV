@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard | ANKA Skincare</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial;
+  background: #f7f8fc;
+}
+
+/* TOP BAR */
+.topbar {
+  background: #111827;
+  color: white;
+  padding: 18px 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.nav button {
+  margin-left: 10px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.home {
+  background: white;
+  color: #111827;
+}
+
+.logout {
+  background: #dc2626;
+  color: white;
+}
+
+/* CONTAINER */
+.container {
+  max-width: 1200px;
+  margin: 30px auto;
+  padding: 20px;
+}
+
+/* CARDS */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.card h4 {
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.card .value {
+  font-size: 26px;
+  font-weight: bold;
+}
+
+/* CHARTS */
+.chart-box {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+</style>
+</head>
+
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">ANKA Skincare Admin</div>
+
+  <div class="nav">
+    <button class="home" onclick="goHome()">Home</button>
+    <button onclick="goAddStock()">Add Stock</button>
+    <button onclick="goSell()">Sell Stock</button>
+    <button class="logout" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="container">
+
+  <!-- STATS -->
+  <div class="cards">
+
+    <div class="card">
+      <h4>Revenue Today</h4>
+      <div class="value" id="revenue">0</div>
+    </div>
+
+    <div class="card">
+      <h4>Units Sold</h4>
+      <div class="value" id="units">0</div>
+    </div>
+
+    <div class="card">
+      <h4>Sales Count</h4>
+      <div class="value" id="salesCount">0</div>
+    </div>
+
+    <div class="card">
+      <h4>Stock Remaining</h4>
+      <div class="value" id="stock">0</div>
+    </div>
+
+  </div>
+
+  <!--Product Categories-->
+  <div class="chart-box">
+
+    <h3>Category Management</h3>
+  
+    <input type="text" id="newCategory" placeholder="New category name">
+    <button onclick="addCategory()">Add Category</button>
+  
+    <h4 style="margin-top:20px;">Existing Categories</h4>
+    <ul id="categoryList"></ul>
+  
+  </div>
+
+  <!-- CHART 1 -->
+  <div class="chart-box">
+    <h3>Revenue Trend</h3>
+    <canvas id="revenueChart"></canvas>
+  </div>
+
+  <!-- CHART 2 -->
+  <div class="chart-box">
+    <h3>Units Sold Trend</h3>
+    <canvas id="unitsChart"></canvas>
+  </div>
+
+  <!--cATEGORY CHART-->
+  <div class="chart-box">
+    <h3>Category Performance</h3>
+    <canvas id="categoryChart"></canvas>
+  </div>
+
+</div>
+
+<script>
+
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzObXviRyBq_uktnGna465i0DHdPww8NBVBtCMFoun0cQUKMmcn-R3ttIfqshR0_rno/exec";
+
+/* ===============================
+SESSION CHECK
+=============================== */
+const user = localStorage.getItem("user");
+const role = localStorage.getItem("role");
+
+if (!user) {
+  window.location.href = "index.html";
+}
+
+if (role !== "admin") {
+  alert("Access denied");
+  window.location.href = "SINV.html";
+}
+
+/* ===============================
+LOAD DASHBOARD DATA
+=============================== */
+
+function loadDashboard() {
+
+  fetch(SCRIPT_URL + "?action=getDashboardData")
+    .then(res => res.json())
+    .then(data => {
+
+      if (data.status === "success") {
+
+        document.getElementById("revenue").innerText = data.revenue;
+        document.getElementById("units").innerText = data.unitsSold;
+        document.getElementById("salesCount").innerText = data.salesCount;
+        document.getElementById("stock").innerText = data.stockLeft;
+
+      }
+
+    })
+    .catch(err => console.log(err));
+}
+
+/* ===============================
+CHARTS
+=============================== */
+
+function loadCharts() {
+
+  fetch(SCRIPT_URL + "?action=getSalesChartData")
+    .then(res => res.json())
+    .then(data => {
+
+      if (data.status !== "success") return;
+
+      new Chart(document.getElementById("revenueChart"), {
+        type: "line",
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: "Revenue",
+            data: data.revenue,
+            borderColor: "green",
+            fill: false
+          }]
+        }
+      });
+
+      new Chart(document.getElementById("unitsChart"), {
+        type: "bar",
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: "Units Sold",
+            data: data.units,
+            backgroundColor: "blue"
+          }]
+        }
+      });
+
+    });
+
+}
+
+/* ===============================
+LOAD PRODUCT CATEGORY
+=============================== */
+
+
+function loadCategoryList() {
+
+fetch(SCRIPT_URL + "?action=getCategories")
+  .then(res => res.json())
+  .then(data => {
+
+    const list = document.getElementById("categoryList");
+    list.innerHTML = "";
+
+    if (data.status === "success") {
+
+      data.categories.forEach(cat => {
+        const li = document.createElement("li");
+        li.innerText = cat;
+        list.appendChild(li);
+      });
+
+    }
+
+  });
+
+}
+
+/* ===============================
+ADD PRODUCT CATEGORY
+=============================== */
+
+function addCategory() {
+
+const category = document.getElementById("newCategory").value;
+const role = localStorage.getItem("role");
+
+fetch(SCRIPT_URL + "?action=addCategory&category=" + encodeURIComponent(category) + "&role=" + role)
+  .then(res => res.json())
+  .then(data => {
+
+    if (data.status === "success") {
+      alert("Category added");
+      document.getElementById("newCategory").value = "";
+      loadCategoryList();
+    } else {
+      alert(data.message);
+    }
+
+  });
+
+}
+
+/* ===============================
+FETCH PRODUCT CATEGORIES
+=============================== */
+
+function loadCategoryChart() {
+
+fetch(SCRIPT_URL + "?action=getCategoryAnalytics")
+  .then(res => res.json())
+  .then(data => {
+
+    if (data.status !== "success") return;
+
+    new Chart(document.getElementById("categoryChart"), {
+      type: "bar",
+      data: {
+        labels: data.labels,
+        datasets: [
+          {
+            label: "Stock",
+            data: data.stock
+          },
+          {
+            label: "Units Sold",
+            data: data.sold
+          },
+          {
+            label: "Revenue",
+            data: data.revenue
+          }
+        ]
+      }
+    });
+
+  })
+  .catch(err => console.log(err));
+}
+
+/* ===============================
+NAVIGATION
+=============================== */
+
+function goHome() {
+  window.location.href = "SINV.html";
+}
+
+function goAddStock() {
+  window.location.href = "addStock.html";
+}
+
+function goSell() {
+  window.location.href = "sellStock.html";
+}
+
+function logout() {
+  localStorage.removeItem("user");
+  localStorage.removeItem("role");
+  window.location.href = "index.html";
+}
+
+/* ===============================
+INIT
+=============================== */
+
+window.onload = function () {
+  loadDashboard();
+  loadCharts();
+  loadCategoryList();
+  loadCategoryChart();
+};
+
+</script>
+
+</body>
+</html>
